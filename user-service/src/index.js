@@ -1,52 +1,70 @@
-//express server is used to handle the requests and responses
-const express = require('express');
-//cookie-parser is used to parse the cookies from the request
-const cookieParser = require('cookie-parser');
+// Express server: handles HTTP requests/responses
+require('dotenv').config({
+  path: require('path').resolve(__dirname, '.env'),
+});
 
-//helmet is used to secure the app by setting various HTTP headers
+const express = require('express');
+const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 
+
+// Middlewares
 const corsMiddleware = require('./middlewares/cors.middleware');
 const requestLogger = require('./middlewares/req.middleware');
+
+// Config / infra
 const logger = require('./config/logger');
+const redisClient = require('./config/redis');
+const prisma = require('./config/prisma');
 
-//dotenv is used to load environment variables from a .env file
-require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
-
-
-// we create an instance of express
+// Create Express app
 const app = express();
 
-// we use helmet to secure the app by setting various HTTP headers , its a middleware that helps to protect the app from some well-known web vulnerabilities by setting HTTP headers appropriately
+// --- Global middleware ---
 app.use(helmet());
-
-// we use cors to handle cross-origin requests
-// app.use(cors());
-
 app.use(corsMiddleware);
 app.use(requestLogger);
-
-// we use cookie-parser to parse the cookies from the request
 app.use(cookieParser());
-
-
-// we use express.json() to parse the JSON data from the request body
 app.use(express.json());
 
+// --- Health / root route ---
 app.get('/', (req, res) => {
-    logger.info('Received request for /');
-    res.send('User Service is running');
+  logger.info('Received request for /');
+  res.send('User Service is running');
 });
 
-app.use('/auth', require('./routes/auth.route'));
+// --- Routes (mounted after Redis is ready) ---
+function registerRoutes() {
+  // Auth routes require Redis (for OTP), so we mount them after connect
+  const authRoutes = require('./routes/auth.route');
+  app.use('/auth', authRoutes);
+}
 
-const PORT = process.env.PORT || 3000;
+// --- Start server ---
+async function startServer() {
+  try {
+    // 1. Connect to Redis first (auth routes depend on it)
+    await redisClient.connect();
 
-logger.info(`User Service is running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+    // connect to PostgreSQL (Prisma) - optional, but good to check DB connection at startup
+    
+    await prisma.$connect();
+    logger.info('Connected to PostgreSQL database');
 
-app.listen(PORT, () => {
-    logger.info(`User Service is listening on port ${PORT}`);
-});
+    // 2. Register routes that depend on Redis
+    registerRoutes();
 
+    // 3. Start HTTP server
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => {
+      logger.info(
+        `User Service running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`
+      );
+    });
+  } catch (error) {
+    logger.error(`Failed to start User Service: ${error.message}`);
+    process.exit(1);
+  }
+}
 
-
+startServer();

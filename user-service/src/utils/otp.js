@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const redis = require('../config/redis').getClient();
 
 async function generateAndSendOtp(meta) {
@@ -5,9 +6,9 @@ async function generateAndSendOtp(meta) {
     const rateLimitKey = `otp_rate_limit:${meta.email}`;
     const rateLimit = await redis.get(rateLimitKey);
 
-    if (Number(rateLimit) >= 5) {
-        throw new Error('OTP request limit exceeded. Please try again later.');
-    }
+    // if (Number(rateLimit) >= 10) {
+    //     throw new Error('OTP request limit exceeded. Please try again later.');
+    // }
     const otp = otpgenerator.generate(6, 
         { upperCaseAlphabets: false, 
           lowerCaseAlphabets: false ,

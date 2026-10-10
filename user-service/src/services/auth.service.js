@@ -1,6 +1,7 @@
-const prisma = require('../config/prisma').prisma;
+const prisma = require('../config/prisma');
+const logger = require('../config/logger');
 
-const generateAndSendOtp = require('../utils/otp')
+const { generateAndSendOtp } = require('../utils/otp');
 
 const sendEmail = require('../utils/email').sendEmail;
 
@@ -9,6 +10,16 @@ const sendOtp = async (firstName, lastName, email, password) => {
     if (existingUser) {
         throw new Error('User already exists');
     }
+
+    await prisma.user.create({
+        data: {
+            firstName,
+            lastName,
+            email,
+            password
+        }
+    });
+    logger.info('Created unverified user record in PostgreSQL');
 
     const meta = {firstName, lastName, email, password}
 

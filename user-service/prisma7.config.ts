@@ -2,8 +2,11 @@
 // npm install --save-dev prisma dotenv
 import { config } from "dotenv";
 import { defineConfig } from "prisma/config";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 
-config({ path: "src/.env", override: true });
+const serviceRoot = path.dirname(fileURLToPath(import.meta.url));
+config({ path: path.join(serviceRoot, "src", ".env"), override: true });
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
