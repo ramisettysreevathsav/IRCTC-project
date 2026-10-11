@@ -16,7 +16,7 @@ const sendEmail = async (meta) => {
         from: process.env.SMTP_USER,
         to: meta.email,
         subject: 'OTP for Email Verification',
-        html: `<div>Hello ${meta.firstName} ${meta.lastName},</div><br/>Your OTP for email verification is: ${meta.otp}<br/>Please enter this OTP to verify your email address.`
+        html: `<div>Hello User,</div><br/>Your OTP for email verification is: ${meta.otp}<br/>Please enter this OTP to verify your email address.`
     };
 
     await transporter.sendMail(mailOptions);
